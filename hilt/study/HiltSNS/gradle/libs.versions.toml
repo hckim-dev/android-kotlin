@@ -40,6 +40,7 @@ hiltWork = "1.2.0"
 # Hilt Extension
 javapoet = "1.13.0"
 autoService = "1.1.1"
+runtime = "1.9.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -96,6 +97,7 @@ hilt-core = { module = "com.google.dagger:hilt-core", version.ref = "hilt" }
 javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
 auto-service-annotations = { module = "com.google.auto.service:auto-service-annotations", version.ref = "autoService" }
 auto-service = { module = "com.google.auto.service:auto-service", version.ref = "autoService" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
