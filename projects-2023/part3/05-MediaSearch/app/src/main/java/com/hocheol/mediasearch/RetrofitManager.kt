@@ -15,7 +15,7 @@ object RetrofitManager {
     private const val BASE_URL = "https://dapi.kakao.com/v2/search/"
     private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
     private const val AUTHORIZATION_HEADER = "Authorization"
-    private const val KAKAO_AK = "a0d3971831e7a4dddab4859d46288c25"
+    private val KAKAO_AK = BuildConfig.KAKAO_REST_API_KEY
 
     private val okHttpClient = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)

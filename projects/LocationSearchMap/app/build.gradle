@@ -4,10 +4,22 @@ plugins {
     id 'kotlin-android-extensions'
 }
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file("secrets.properties")
+if (localConfigFile.exists()) {
+    localConfigFile.withInputStream { localConfig.load(it) }
+}
+def clientSetting = { String name ->
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+}
+
 android {
     compileSdk 31
 
     defaultConfig {
+        buildConfigField "String", "TMAP_API_KEY", groovy.json.JsonOutput.toJson(clientSetting("TMAP_API_KEY"))
+        resValue "string", "google_map", clientSetting("GOOGLE_MAPS_API_KEY")
+
         applicationId "com.hocheol.locationsearchmap"
         minSdk 23
         targetSdk 31

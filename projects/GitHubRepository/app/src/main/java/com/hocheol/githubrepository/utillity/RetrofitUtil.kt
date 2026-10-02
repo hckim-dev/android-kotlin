@@ -2,7 +2,6 @@ package com.hocheol.githubrepository.utillity
 
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
-import com.hocheol.githubrepository.BuildConfig
 import com.hocheol.githubrepository.data.Url
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -47,11 +46,7 @@ object RetrofitUtil {
     private fun buildOkHttpClient(): OkHttpClient {
         val interceptor = HttpLoggingInterceptor()
 
-        if (BuildConfig.DEBUG) {
-            interceptor.level = HttpLoggingInterceptor.Level.BODY
-        } else {
-            interceptor.level = HttpLoggingInterceptor.Level.NONE
-        }
+        interceptor.level = HttpLoggingInterceptor.Level.NONE
 
         return OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)

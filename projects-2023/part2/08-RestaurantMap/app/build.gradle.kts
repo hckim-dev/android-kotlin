@@ -1,13 +1,26 @@
+import java.util.Properties
+import groovy.json.JsonOutput
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val localConfig = Properties().apply {
+    val configFile = rootProject.file("secrets.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+fun clientSetting(name: String): String =
+    System.getenv(name) ?: localConfig.getProperty(name, "")
 
 android {
     namespace = "com.hocheol.restaurantmap"
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "NAVER_SEARCH_PROXY_BASE_URL", JsonOutput.toJson(clientSetting("NAVER_SEARCH_PROXY_BASE_URL")))
+        resValue("string", "naver_map_client_id", clientSetting("NAVER_MAP_CLIENT_ID"))
+
         applicationId = "com.hocheol.restaurantmap"
         minSdk = 28
         targetSdk = 34
@@ -32,6 +45,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
 }

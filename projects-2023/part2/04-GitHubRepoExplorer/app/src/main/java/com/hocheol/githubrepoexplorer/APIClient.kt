@@ -10,7 +10,6 @@ object APIClient {
     private val okHttpClient = OkHttpClient.Builder()
 //        .addInterceptor {
 //            val request = it.request().newBuilder()
-//                .addHeader("Authorization", "Bearer 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")
 //                .build()
 //            it.proceed(request)
 //        }

@@ -9,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 object WeatherRepository {
 
     private const val BASE_URL = "http://apis.data.go.kr/"
-    private const val SERVER_KEY = "Q5dClFqwf3pxbC66tZUuHSHCyxPXCv45tQ8QcLnOvB2BvaFys+h6Yzqp/yx4JMoVZd0PS3XwT5drD6F+NLZ3UQ=="
+    private val SERVER_KEY = BuildConfig.WEATHER_SERVICE_KEY
 
     private val retrofit = Retrofit.Builder()
         .baseUrl(BASE_URL)

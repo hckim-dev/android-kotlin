@@ -11,7 +11,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        KakaoSdk.init(this, "39dba980b4f77dfca3fca9e58ad98553")
+        KakaoSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)
         MobileAds.initialize(this) {}
     }
 }

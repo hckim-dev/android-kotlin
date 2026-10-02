@@ -1,14 +1,27 @@
+import java.util.Properties
+import groovy.json.JsonOutput
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
 }
 
+val localConfig = Properties().apply {
+    val configFile = rootProject.file("secrets.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+fun clientSetting(name: String): String =
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+
 android {
     namespace = "com.hocheol.locationshare"
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "KAKAO_NATIVE_APP_KEY", JsonOutput.toJson(clientSetting("KAKAO_NATIVE_APP_KEY")))
+        manifestPlaceholders["KAKAO_NATIVE_APP_KEY"] = clientSetting("KAKAO_NATIVE_APP_KEY")
+
         applicationId = "com.hocheol.locationshare"
         minSdk = 28
         targetSdk = 34
@@ -33,6 +46,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         viewBinding = true
     }
 }

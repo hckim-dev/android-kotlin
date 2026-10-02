@@ -3,10 +3,22 @@ plugins {
     id 'kotlin-android'
 }
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file("secrets.properties")
+if (localConfigFile.exists()) {
+    localConfigFile.withInputStream { localConfig.load(it) }
+}
+def clientSetting = { String name ->
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+}
+
 android {
     compileSdk 31
 
     defaultConfig {
+        buildConfigField "String", "KAKAO_API_KEY", groovy.json.JsonOutput.toJson(clientSetting("KAKAO_API_KEY"))
+        buildConfigField "String", "AIR_KOREA_SERVICE_KEY", groovy.json.JsonOutput.toJson(clientSetting("AIR_KOREA_SERVICE_KEY"))
+
         applicationId "com.hocheol.finedust"
         minSdk 23
         targetSdk 31
@@ -14,9 +26,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField "String", "KAKAO_API_KEY", project.properties["KAKAO_API_KEY"]
-        buildConfigField "String", "AIR_KOREA_SERVICE_KEY", project.properties["AIR_KOREA_SERVICE_KEY"]
     }
 
     buildTypes {

@@ -3,10 +3,21 @@ plugins {
     id 'kotlin-android'
 }
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file("secrets.properties")
+if (localConfigFile.exists()) {
+    localConfigFile.withInputStream { localConfig.load(it) }
+}
+def clientSetting = { String name ->
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+}
+
 android {
     compileSdk 31
 
     defaultConfig {
+        buildConfigField "String", "UNSPLASH_PROXY_BASE_URL", groovy.json.JsonOutput.toJson(clientSetting("UNSPLASH_PROXY_BASE_URL"))
+
         applicationId "com.hocheol.unsplash"
         minSdk 23
         targetSdk 31
@@ -14,8 +25,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField "String", "UNSPLASH_ACCESS_KEY", project.properties["UNSPLASH_ACCESS_KEY"]
     }
 
     buildTypes {

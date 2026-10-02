@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.view.isGone
@@ -17,11 +18,10 @@ import kotlin.coroutines.CoroutineContext
 class SignInActivity : AppCompatActivity(), CoroutineScope {
 
     private lateinit var binding: ActivitySignInBinding
-
     private val authTokenProvider by lazy { AuthTokenProvider(this) }
-
     private val job: Job = Job()
-
+    private var loginJob: Job? = null
+    private var verificationDialog: AlertDialog? = null
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Main + job
 
@@ -29,89 +29,97 @@ class SignInActivity : AppCompatActivity(), CoroutineScope {
         super.onCreate(savedInstanceState)
         binding = ActivitySignInBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         if (checkAuthCodeExist()) {
             launchMainActivity()
         } else {
-            bindViews()
+            binding.loginButton.setOnClickListener { loginGithub() }
         }
-
     }
 
     private fun checkAuthCodeExist(): Boolean = authTokenProvider.token.isNullOrEmpty().not()
 
-    private fun launchMainActivity() =
-        startActivity(
-            Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        )
-
-    private fun bindViews() = with(binding) {
-        loginButton.setOnClickListener {
-            loginGithub()
+    private fun launchMainActivity() = startActivity(
+        Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-    }
+    )
 
     private fun loginGithub() {
-        val loginUri = Uri.Builder().scheme("https").authority("github.com")
-            .appendPath("login")
-            .appendPath("oauth")
-            .appendPath("authorize")
-            .appendQueryParameter("client_id", BuildConfig.GITHUB_CLIENT_ID)
-            .build()
+        loginJob?.cancel()
+        loginJob = launch {
+            showProgress()
+            try {
+                // Device flow authenticates a public client without an embedded client secret.
+                val response = RetrofitUtil.authApiService.getDeviceCode(BuildConfig.GITHUB_CLIENT_ID)
+                val device = response.body()
+                check(response.isSuccessful && device != null) { "Device authorization failed" }
+                check(device.deviceCode.isNotBlank() && device.userCode.isNotBlank())
+                check(device.expiresIn in 1..900 && device.interval in 1..900)
+                val uri = Uri.parse(device.verificationUri)
+                check(uri.scheme == "https" && uri.host == "github.com" && uri.path == "/login/device")
 
-        CustomTabsIntent.Builder().build().also {
-            it.launchUrl(this, loginUri)
-        }
-    }
+                verificationDialog = AlertDialog.Builder(this@SignInActivity)
+                    .setTitle("GitHub 로그인")
+                    .setMessage("인증 페이지에서 다음 코드를 입력하세요: ${device.userCode}")
+                    .setPositiveButton("인증 페이지 열기") { _, _ ->
+                        CustomTabsIntent.Builder().build().launchUrl(this@SignInActivity, uri)
+                    }
+                    .setNegativeButton("취소") { _, _ -> loginJob?.cancel() }
+                    .setOnCancelListener { loginJob?.cancel() }
+                    .show()
 
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-
-        intent?.data?.getQueryParameter("code")?.let {
-            launch(coroutineContext) {
-                showProgress()
-                getAccessToken(it)
-                dismissProgress()
-                if (checkAuthCodeExist()) {
-                    launchMainActivity()
+                withTimeout(device.expiresIn * 1000) {
+                    var intervalSeconds = device.interval.coerceAtLeast(5)
+                    while (isActive) {
+                        delay(intervalSeconds * 1000)
+                        val tokenResponse = RetrofitUtil.authApiService.getAccessToken(
+                            clientId = BuildConfig.GITHUB_CLIENT_ID,
+                            deviceCode = device.deviceCode
+                        )
+                        check(tokenResponse.isSuccessful) { "Token request failed" }
+                        val token = tokenResponse.body() ?: error("Empty token response")
+                        when (token.error) {
+                            "authorization_pending" -> Unit
+                            "slow_down" -> intervalSeconds += 5
+                            null -> {
+                                val accessToken = token.accessToken
+                                check(!accessToken.isNullOrBlank()) { "Missing access token" }
+                                authTokenProvider.updateToken(accessToken)
+                                launchMainActivity()
+                                return@withTimeout
+                            }
+                            else -> error("Device authorization denied or expired")
+                        }
+                    }
                 }
+            } catch (e: TimeoutCancellationException) {
+                Toast.makeText(this@SignInActivity, "인증 시간이 만료되었습니다", Toast.LENGTH_SHORT).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(this@SignInActivity, "로그인할 수 없습니다. 다시 시도해 주세요", Toast.LENGTH_SHORT).show()
+            } finally {
+                verificationDialog?.dismiss()
+                verificationDialog = null
+                if (!isFinishing && !isDestroyed) dismissProgress()
             }
         }
     }
 
-    private suspend fun showProgress() = withContext(coroutineContext) {
-        with(binding) {
-            loginButton.isVisible = false
-            progressBar.isGone = false
-        }
+    private fun showProgress() = with(binding) {
+        loginButton.isVisible = false
+        progressBar.isGone = false
     }
 
-    private suspend fun dismissProgress() = withContext(coroutineContext) {
-        with(binding) {
-            loginButton.isVisible = true
-            progressBar.isGone = true
-        }
+    private fun dismissProgress() = with(binding) {
+        loginButton.isVisible = true
+        progressBar.isGone = true
     }
 
-    private suspend fun getAccessToken(code: String) = withContext(Dispatchers.IO) {
-        val response = RetrofitUtil.authApiService.getAccessToken(
-            clientId = BuildConfig.GITHUB_CLIENT_ID,
-            clientSecret = BuildConfig.GITHUB_CLIENT_SECRET,
-            code = code
-        )
-
-        if (response.isSuccessful) {
-            val accessToken = response.body()?.accessToken ?: ""
-
-            if (accessToken.isNotEmpty()) {
-                authTokenProvider.updateToken(accessToken)
-            } else {
-                Toast.makeText(this@SignInActivity, "AccessToken 이 존재하지 않습니다.", Toast.LENGTH_SHORT).show()
-            }
-        }
+    override fun onDestroy() {
+        verificationDialog?.dismiss()
+        job.cancel()
+        super.onDestroy()
     }
-
 }

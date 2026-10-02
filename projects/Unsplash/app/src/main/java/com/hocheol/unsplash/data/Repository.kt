@@ -14,8 +14,9 @@ object Repository {
         unsplashApiService.getRandomPhotos(query).body()
 
     private val unsplashApiService: UnsplashApiService by lazy {
+        require(BuildConfig.UNSPLASH_PROXY_BASE_URL.startsWith("https://")) { "Image service is unavailable" }
         Retrofit.Builder()
-            .baseUrl(Url.UNSPLASH_BASE_URL)
+            .baseUrl(BuildConfig.UNSPLASH_PROXY_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
             .client(buildOkHttpClient())
             .build()

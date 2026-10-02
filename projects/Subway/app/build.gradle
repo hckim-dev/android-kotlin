@@ -7,10 +7,21 @@ plugins {
     id 'androidx.navigation.safeargs.kotlin'
 }
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file("secrets.properties")
+if (localConfigFile.exists()) {
+    localConfigFile.withInputStream { localConfig.load(it) }
+}
+def clientSetting = { String name ->
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+}
+
 android {
     compileSdk 31
 
     defaultConfig {
+        buildConfigField "String", "SEOUL_API_ACCESS_KEY", groovy.json.JsonOutput.toJson(clientSetting("SEOUL_API_ACCESS_KEY"))
+
         applicationId "com.hocheol.subway"
         minSdk 23
         targetSdk 31
@@ -18,8 +29,6 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField "String", "SEOUL_API_ACCESS_KEY", project.properties["SEOUL_API_ACCESS_KEY"]
     }
 
     buildTypes {

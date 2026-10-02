@@ -1,14 +1,26 @@
+import java.util.Properties
+import groovy.json.JsonOutput
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
 }
 
+val localConfig = Properties().apply {
+    val configFile = rootProject.file("secrets.properties")
+    if (configFile.exists()) configFile.inputStream().use { load(it) }
+}
+fun clientSetting(name: String): String =
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+
 android {
     namespace = "com.hocheol.imageextraction"
     compileSdk = 34
 
     defaultConfig {
+        buildConfigField("String", "UNSPLASH_PROXY_BASE_URL", JsonOutput.toJson(clientSetting("UNSPLASH_PROXY_BASE_URL")))
+
         applicationId = "com.hocheol.imageextraction"
         minSdk = 28
         targetSdk = 34
@@ -33,6 +45,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         dataBinding = true
     }
 }

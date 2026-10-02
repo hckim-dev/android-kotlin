@@ -5,10 +5,21 @@ plugins {
     id 'kotlin-parcelize'
 }
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file("secrets.properties")
+if (localConfigFile.exists()) {
+    localConfigFile.withInputStream { localConfig.load(it) }
+}
+def clientSetting = { String name ->
+    System.getenv(name) ?: localConfig.getProperty(name, "")
+}
+
 android {
     compileSdk 31
 
     defaultConfig {
+        resValue "string", "interparkAPIKey", clientSetting("INTERPARK_API_KEY")
+
         applicationId "com.hocheol.bookreview"
         minSdk 23
         targetSdk 31
